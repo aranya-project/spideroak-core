@@ -1,0 +1,10 @@
+[package]
+name = "canary-std"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license = "BSD-3-Clause"
+rust-version.workspace = true
+
+[dependencies]
+buggy = { path = "../../crates/buggy" }
