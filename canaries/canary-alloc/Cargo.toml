@@ -7,5 +7,5 @@ license = "BSD-3-Clause"
 rust-version.workspace = true
 
 [dependencies]
-buggy = { path = "../../crates/buggy", features = ["alloc"] }
-spideroak-base58 = { path = "../../crates/base58", features = ["alloc"] }
+buggy = { path = "../../crates/buggy" }
+spideroak-base58 = { path = "../../crates/base58" }
