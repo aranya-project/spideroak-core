@@ -3,6 +3,7 @@
 #![no_main]
 
 extern crate buggy;
+extern crate spideroak_base58;
 
 #[cfg(target_os = "none")] // hack to please rust-analyzer
 #[panic_handler]
