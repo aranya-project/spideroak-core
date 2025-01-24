@@ -3,5 +3,5 @@ allow-expect-in-tests = true
 allow-panic-in-tests = true
 allowed-wildcard-imports = ["features"]
 disallowed-macros = [
-    { path = "core::unreachable", reason = "use buggy::bug" }
+    { path = "core::unreachable", reason = "use buggy::bug" },
 ]
