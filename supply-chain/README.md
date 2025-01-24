@@ -1,13 +1,7 @@
 # cargo vet supply chain audits
 
-We automatically trust all crates in this workspace, as well as
-all `aranya-*` crates published by `aranya-project-bot` since
-they are published by us
-
-```shell
-cargo vet trust --all aranya-project-bot
-cargo vet trust --all elagergren-spideroak
-```
+We automatically trust `aranya-*` crates published by `aranya-project-bot` since they are published by us:
+`cargo vet trust --all aranya-project-bot`
 
 To save us time, we've imported audits from trusted 3rd parties:
 https://mozilla.github.io/cargo-vet/importing-audits.html
