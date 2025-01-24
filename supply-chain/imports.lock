@@ -1,0 +1,20 @@
+
+# cargo-vet imports lock
+
+[[audits.bytecode-alliance.audits.cfg-if]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+version = "1.0.0"
+notes = "I am the author of this crate."
+
+[audits.cargo-vet.audits]
+
+[audits.fermyon.audits]
+
+[audits.google.audits]
+
+[audits.isrg.audits]
+
+[audits.mozilla.audits]
+
+[audits.zcash.audits]
