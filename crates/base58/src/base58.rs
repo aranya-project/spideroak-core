@@ -3,6 +3,7 @@ use alloc::string::String;
 use core::{
     borrow::Borrow,
     cmp::{Ord, Ordering, PartialEq, PartialOrd},
+    ffi::CStr,
     fmt,
     hash::{Hash, Hasher},
     ops::Deref,
@@ -116,28 +117,28 @@ macro_rules! encode_x {
             #[doc = concat!("A Base58-encoded ", stringify!($size), "-byte value.")]
             #[derive(Copy, Clone)]
             pub struct $name {
-                data: [u8; Self::MAX_SIZE],
-                /// Number of bytes used in `data`.
-                n: usize,
+                data: [u8; Self::BUFFER_SIZE],
             }
 
             impl $name {
-                /// The maximum size in bytes of the encoded
-                /// value.
-                pub const MAX_SIZE: usize = ($size*1375)/1000;
+                /// The size in bytes of the encoded value.
+                pub const B58_SIZE: usize = ($size * 1375) / 1000;
+
+                /// The size in bytes of the encoded value, with a null terminator.
+                pub const BUFFER_SIZE: usize = Self::B58_SIZE + 1;
             }
 
             impl fmt::Display for $name {
                 #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    fmt::Display::fmt(&**self, f)
+                    fmt::Display::fmt(self.as_str(), f)
                 }
             }
 
             impl fmt::Debug for $name {
                 #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    fmt::Debug::fmt(&**self, f)
+                    fmt::Debug::fmt(self.as_str(), f)
                 }
             }
 
@@ -152,6 +153,13 @@ macro_rules! encode_x {
                 #[inline]
                 fn as_ref(&self) -> &str {
                     self.as_str()
+                }
+            }
+
+            impl AsRef<CStr> for $name {
+                #[inline]
+                fn as_ref(&self) -> &CStr {
+                    self.as_cstr()
                 }
             }
 
@@ -193,10 +201,12 @@ macro_rules! encode_x {
                 type Err = DecodeError;
 
                 fn from_str(s: &str) -> Result<Self, DecodeError> {
-                    Self::decode(s)?;
+                    let b = s.as_bytes();
+                    Self::decode(b)?;
                     // It's valid Base58, so just copy it over.
                     let mut v = Self::default();
-                    v.data[..s.len()].copy_from_slice(s.as_bytes());
+                    let start = Self::B58_SIZE.checked_sub(b.len()).assume("decode ensures it will fit")?;
+                    v.data[start..Self::B58_SIZE].copy_from_slice(b);
                     Ok(v)
                 }
             }
@@ -204,10 +214,11 @@ macro_rules! encode_x {
             impl Default for $name {
                 #[inline]
                 fn default() -> Self  {
-                    Self {
-                        data: [49u8; Self::MAX_SIZE],
-                        n: 0,
-                    }
+                    let mut this = Self {
+                        data: [b'1'; Self::BUFFER_SIZE],
+                    };
+                    this.data[Self::BUFFER_SIZE - 1] = 0;
+                    this
                 }
             }
 
@@ -220,8 +231,8 @@ macro_rules! encode_x {
             }
             impl_eq!($name, str);
             impl_eq!($name, &'a str);
-            #[cfg(feature = "std")]
-            impl_eq!(std::borrow::Cow<'a, str>, $name);
+            #[cfg(feature = "alloc")]
+            impl_eq!(alloc::borrow::Cow<'a, str>, $name);
             #[cfg(feature = "alloc")]
             impl_eq!($name, String);
 
@@ -264,8 +275,14 @@ macro_rules! encode_x {
 
                 /// Returns a byte slice of the string's contents.
                 #[inline]
-                pub fn as_bytes(&self) -> &[u8] {
-                    &self.data[self.n..]
+                pub fn as_bytes(&self) -> &[u8; Self::B58_SIZE] {
+                    self.data[..Self::B58_SIZE].try_into().expect("array size matches slice")
+                }
+
+                /// Returns a null terminated cstr of the string's contents.
+                #[inline]
+                pub fn as_cstr(&self) -> &CStr {
+                    CStr::from_bytes_with_nul(&self.data).expect("should be valid C string")
                 }
 
                 /// Decodes `s` as bytes.
@@ -291,36 +308,30 @@ macro_rules! encode_x {
                 }
 
                 /// Encodes `b` as a Base58 string.
-                pub fn encode(b: &[u8; $size]) -> $name {
-                    let mut dst = [0u8; Self::MAX_SIZE];
+                pub fn encode(b: &[u8; $size]) -> Self {
+                    let mut dst = Self::default();
+
                     let mut x = Uint::<{ $size/8 }, $size>::from_be_bytes(b);
 
-                    let mut i = dst.len();
+                    let mut i = Self::B58_SIZE;
                     while !x.is_zero() {
                         let mut r = x.quo_radix();
                         if x.is_zero() {
                             while r > 0 {
                                 i = i.checked_sub(1).expect("i must be non-zero");
-                                dst[i] = ALPHABET[(r % 58) as usize];
+                                dst.data[i] = ALPHABET[(r % 58) as usize];
                                 r /= 58;
                             }
                         } else {
                             for _ in 0..10 {
                                 i = i.checked_sub(1).expect("i must be non-zero");
-                                dst[i] = ALPHABET[(r % 58) as usize];
+                                dst.data[i] = ALPHABET[(r % 58) as usize];
                                 r /= 58;
                             }
                         }
                     }
 
-                    for c in b {
-                        if *c != 0 {
-                            break;
-                        }
-                        i = i.checked_sub(1).expect("i must be non-zero");
-                        dst[i] = b'1';
-                    }
-                    $name{ data: dst, n: i }
+                    dst
                 }
             }
         )+
@@ -454,20 +465,32 @@ mod test {
                 )
                 .unwrap();
                 for (i, tc) in tests.iter().enumerate() {
+                    let test = format!("test case {i}");
                     let input = hex::decode(&tc.input)
-                        .expect(&format!("{i}"))
+                        .expect(&test)
                         .try_into()
-                        .expect(&format!("{i}"));
+                        .expect(&test);
 
                     let got = $type::encode(&input);
-                    assert_eq!(got, tc.output.as_str(), "{i}");
+                    // TODO(jdygert): Update test data?
+                    let padded = format!("{:1>width$}", tc.output, width = $type::B58_SIZE);
+                    assert_eq!(got.as_str(), padded.as_str(), "{test}");
 
-                    let got = $type::decode(&got).expect(&format!("{i}"));
-                    assert_eq!(got.as_ref(), input, "{i}");
+                    let got = $type::decode(&got).expect(&test);
+                    assert_eq!(got.as_ref(), input, "{test}");
                 }
             }
         };
     }
     impl_test!(test_string16, String16);
     impl_test!(test_string64, String64);
+
+    #[test]
+    fn test_from_str() {
+        let str = String16::from_str("abcd").unwrap();
+        assert_eq!(str.len(), 22);
+        assert_eq!(str, "111111111111111111abcd");
+
+        assert_eq!(str, String16::from_str(str.as_str()).unwrap());
+    }
 }
