@@ -1,5 +1,3 @@
-#[cfg(feature = "alloc")]
-use alloc::string::String;
 use core::{
     borrow::Borrow,
     cmp::{Ord, Ordering, PartialEq, PartialOrd},
@@ -232,9 +230,11 @@ macro_rules! encode_x {
             impl_eq!($name, str);
             impl_eq!($name, &'a str);
             #[cfg(feature = "alloc")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
             impl_eq!(alloc::borrow::Cow<'a, str>, $name);
             #[cfg(feature = "alloc")]
-            impl_eq!($name, String);
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            impl_eq!($name, alloc::string::String);
 
             impl Ord for $name {
                 #[inline]
