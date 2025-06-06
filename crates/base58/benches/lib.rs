@@ -1,8 +1,8 @@
 #![allow(missing_docs)]
 
-use std::{env, time::Duration};
+use std::{env, hint::black_box, time::Duration};
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use spideroak_base58::{String16, String32, String64};
 

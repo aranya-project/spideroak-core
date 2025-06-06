@@ -8,10 +8,10 @@ license = "BSD-3-Clause"
 repository.workspace = true
 rust-version.workspace = true
 
+
 [lints]
 workspace = true
 
-[lib]
 
 [features]
 default = []
@@ -20,25 +20,29 @@ alloc = ["buggy/alloc"]
 # Enable std
 std = ["alloc", "buggy/std"]
 
+
 [dependencies]
 buggy = { version = "0.1.0", path = "../buggy" }
 
-byteorder = { version = "1.5", default-features = false }
 
 [dev-dependencies]
-criterion = { version = "0.5" }
+criterion = { version = "0.6", default-features = false }
 flate2 = { version = "1" }
 hex = { version = "0.4" }
 rand = { version = "0.8", default-features = false, features = ["std_rng", "getrandom"] }
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1" }
+serde_derive = { version = "1" }
 serde_json = { version = "1" }
+
 
 [[bench]]
 name = "lib"
 harness = false
 
+
 [package.metadata.docs.rs]
 all-features = true
+
 
 [package.metadata.cargo-all-features]
 always_include_features = []
