@@ -10,7 +10,6 @@ use core::{
 };
 
 use buggy::{Bug, BugExt};
-use byteorder::{BigEndian, ByteOrder};
 
 use crate::arith::{div_ww, mul_add_ww};
 
@@ -363,10 +362,8 @@ impl<const W: usize, const B: usize> Uint<W, B> {
     /// Decodes an integer from big-endian format.
     fn from_be_bytes(b: &[u8; B]) -> Self {
         let mut z = [0u64; W];
-        let mut j = B;
-        for x in &mut z {
-            j = j.checked_sub(8).expect("j must be >= 8");
-            *x = BigEndian::read_u64(&b[j..]);
+        for (bytes, word) in b.chunks_exact(8).rev().zip(&mut z) {
+            *word = u64::from_be_bytes(bytes.try_into().expect("len == 8"));
         }
         Self { words: z }
     }
@@ -374,10 +371,8 @@ impl<const W: usize, const B: usize> Uint<W, B> {
     /// Encodes the integer in big-endian format.
     fn to_be_bytes(&self) -> [u8; B] {
         let mut b = [0u8; B];
-        let mut i = B;
-        for x in self.words {
-            i = i.checked_sub(8).expect("i must be >= 8");
-            BigEndian::write_u64(&mut b[i..], x);
+        for (bytes, word) in b.chunks_exact_mut(8).rev().zip(self.words) {
+            bytes.copy_from_slice(&word.to_be_bytes());
         }
         b
     }
@@ -442,11 +437,10 @@ mod test {
     use std::io::Read;
 
     use flate2::bufread::GzDecoder;
-    use serde::{Deserialize, Serialize};
 
     use super::*;
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Debug, serde_derive::Deserialize)]
     struct TestCase {
         input: String,
         output: String,
